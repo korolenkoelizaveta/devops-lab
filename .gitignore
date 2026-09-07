@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Virtual environment
+venv/
+.venv/
+
+# Environment variables
+.env
+
+# Node
+node_modules/
+
+# Vue build
+client/dist/
+
+# Jenkins release
+release/
+
+# IDE
+.idea/
+.vscode/
