@@ -3,6 +3,7 @@ pipeline {
 
     options {
         skipDefaultCheckout(true)
+	    disableConcurrentBuilds()
     }
 
     stages {
@@ -42,6 +43,12 @@ pipeline {
         }
 
         stage('Delivery') {
+            when {
+                expression {
+                    env.GIT_BRANCH == 'origin/main'
+                }
+            }
+
             steps {
                 echo 'Подготовка стабильной версии приложения'
 
@@ -56,8 +63,6 @@ pipeline {
                     copy manage.py release\\
                     copy requirements.txt release\\
                 '''
-
-                echo 'Сохранение готовой версии как артефакта Jenkins'
 
                 archiveArtifacts(
                     artifacts: 'release/**/*',
