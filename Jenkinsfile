@@ -1,25 +1,32 @@
 pipeline {
     agent any
 
+    environment {
+        DEPLOY_DIR = 'C:\\ProgramData\\Jenkins\\deploy\\devops-lab'
+    }
+
     options {
         skipDefaultCheckout(true)
-	    disableConcurrentBuilds()
+        disableConcurrentBuilds(abortPrevious: true)
     }
 
     stages {
+
         stage('Checkout') {
             steps {
-                echo 'Получение исходного кода из GitHub'
+                echo 'Получение исходного кода'
                 checkout scm
+
+                echo "Текущая ветка: ${env.GIT_BRANCH}"
             }
         }
 
         stage('Install Dependencies') {
             steps {
-                echo 'Установка зависимостей Django'
+                echo 'Установка зависимостей backend'
                 bat 'python -m pip install -r requirements.txt'
 
-                echo 'Установка зависимостей Vue'
+                echo 'Установка зависимостей frontend'
                 dir('client') {
                     bat 'npm ci'
                 }
@@ -35,50 +42,80 @@ pipeline {
 
         stage('Build') {
             steps {
-                echo 'Сборка Vue-приложения'
+                echo 'Сборка frontend'
+
                 dir('client') {
                     bat 'npm run build'
                 }
             }
         }
 
-        stage('Delivery') {
+        stage('Deploy') {
             when {
                 expression {
-                    env.GIT_BRANCH == 'origin/main'
+                    env.GIT_BRANCH == 'origin/main' ||
+                    env.GIT_BRANCH == 'main'
                 }
             }
 
             steps {
-                echo 'Подготовка стабильной версии приложения'
+                echo 'Остановка старой версии приложения'
 
                 bat '''
-                    if exist release rmdir /S /Q release
-                    mkdir release
-
-                    xcopy app release\\app /E /I /Y
-                    xcopy gym release\\gym /E /I /Y
-                    xcopy client\\dist release\\client\\dist /E /I /Y
-
-                    copy manage.py release\\
-                    copy requirements.txt release\\
+                    powershell -NoProfile -Command "$p = Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue; if ($p) { $p | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue } }"
+                    powershell -NoProfile -Command "$p = Get-NetTCPConnection -LocalPort 5173 -State Listen -ErrorAction SilentlyContinue; if ($p) { $p | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue } }"
                 '''
 
-                archiveArtifacts(
-                    artifacts: 'release/**/*',
-                    fingerprint: true
-                )
+                echo 'Обновление рабочей версии приложения'
+
+                bat '''
+                    if not exist "%DEPLOY_DIR%" mkdir "%DEPLOY_DIR%"
+
+                    robocopy "%WORKSPACE%" "%DEPLOY_DIR%" /MIR /R:1 /W:1 ^
+                    /XD .git __pycache__ .pytest_cache ^
+                    /XF db.sqlite3 *.pyc
+
+                    if %ERRORLEVEL% GEQ 8 exit /b %ERRORLEVEL%
+                    exit /b 0
+                '''
+
+                echo 'Применение миграций базы данных'
+
+                bat '''
+                    cd /d "%DEPLOY_DIR%"
+                    python manage.py migrate
+                '''
+
+                echo 'Запуск новой версии backend'
+
+                bat '''
+                    cd /d "%DEPLOY_DIR%"
+                    set JENKINS_NODE_COOKIE=dontKillMe
+                    start "" /B cmd /c "python manage.py runserver 0.0.0.0:8000 --noreload > backend.log 2>&1"
+                '''
+
+                echo 'Запуск новой версии frontend'
+
+                bat '''
+                    cd /d "%DEPLOY_DIR%\\client"
+                    set JENKINS_NODE_COOKIE=dontKillMe
+                    start "" /B cmd /c "npm run dev -- --host 0.0.0.0 --port 5173 > frontend.log 2>&1"
+                '''
             }
         }
     }
 
     post {
         success {
-            echo 'CI/CD pipeline успешно завершен'
+            echo "Pipeline для ${env.GIT_BRANCH} успешно завершен"
         }
 
         failure {
-            echo 'CI/CD pipeline завершен с ошибкой'
+            echo "Pipeline для ${env.GIT_BRANCH} завершен с ошибкой"
+        }
+
+        aborted {
+            echo 'Предыдущая сборка отменена новой сборкой'
         }
     }
 }
