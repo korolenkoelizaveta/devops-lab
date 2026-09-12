@@ -86,20 +86,18 @@ pipeline {
                     python manage.py migrate
                 '''
 
-                echo 'Запуск новой версии backend'
+                echo 'Запуск backend'
 
                 bat '''
-                    cd /d "%DEPLOY_DIR%"
                     set JENKINS_NODE_COOKIE=dontKillMe
-                    start "" /B cmd /c "python manage.py runserver 0.0.0.0:8000 --noreload > backend.log 2>&1"
+                    powershell -NoProfile -Command "$env:JENKINS_NODE_COOKIE='dontKillMe'; Start-Process -FilePath 'python' -ArgumentList 'manage.py runserver 0.0.0.0:8000 --noreload' -WorkingDirectory '%DEPLOY_DIR%' -WindowStyle Hidden"
                 '''
 
-                echo 'Запуск новой версии frontend'
+                echo 'Запуск frontend'
 
                 bat '''
-                    cd /d "%DEPLOY_DIR%\\client"
                     set JENKINS_NODE_COOKIE=dontKillMe
-                    start "" /B cmd /c "npm run dev -- --host 0.0.0.0 --port 5173 > frontend.log 2>&1"
+                    powershell -NoProfile -Command "$env:JENKINS_NODE_COOKIE='dontKillMe'; Start-Process -FilePath 'cmd.exe' -ArgumentList '/c npm run dev -- --host 0.0.0.0 --port 5173' -WorkingDirectory '%DEPLOY_DIR%\\client' -WindowStyle Hidden"
                 '''
             }
         }
