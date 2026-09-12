@@ -40,7 +40,7 @@ onBeforeMount(async () => {
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
       <div class="container-fluid">
         <RouterLink class="navbar-brand" to="/users">
-          Gym2
+          Gym
         </RouterLink>
 
         <button
