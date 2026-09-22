@@ -1,0 +1,45 @@
+
+services:
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    image: devops-lab-backend:local
+
+    ports:
+      - "127.0.0.1:8001:8000"
+
+    environment:
+      DJANGO_DB_PATH: /data/db.sqlite3
+
+    volumes:
+      - sqlite_data:/data
+      - media_data:/app/media
+
+    command: >
+      sh -c "python manage.py migrate &&
+             exec python manage.py runserver 0.0.0.0:8000 --noreload"
+
+
+  frontend:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+
+    image: devops-lab-frontend:local
+
+    ports:
+      - "127.0.0.1:8081:80"
+
+    depends_on:
+      - backend
+
+
+volumes:
+  sqlite_data:
+    name: devops-lab-sqlite
+
+  media_data:
+    name: devops-lab-media

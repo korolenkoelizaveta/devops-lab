@@ -1,10 +1,6 @@
 pipeline {
     agent any
 
-    environment {
-        DEPLOY_DIR = 'C:\\ProgramData\\Jenkins\\deploy\\devops-lab'
-    }
-
     options {
         skipDefaultCheckout(true)
         disableConcurrentBuilds(abortPrevious: true)
@@ -14,39 +10,25 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                echo 'Получение исходного кода'
                 checkout scm
 
-                echo "Текущая ветка: ${env.GIT_BRANCH}"
+                echo "Current branch: ${env.GIT_BRANCH}"
             }
         }
 
-        stage('Install Dependencies') {
+        stage('Build Docker Images') {
             steps {
-                echo 'Установка зависимостей backend'
-                bat 'python -m pip install -r requirements.txt'
+                bat 'docker build -t devops-lab-backend:ci-%BUILD_NUMBER% .'
 
-                echo 'Установка зависимостей frontend'
-                dir('client') {
-                    bat 'npm ci'
-                }
+                bat 'docker build -t devops-lab-frontend:ci-%BUILD_NUMBER% ./client'
             }
         }
 
         stage('Tests') {
             steps {
-                echo 'Запуск 20 CRUD-тестов'
-                bat 'python manage.py test'
-            }
-        }
+                echo 'Running 20 Django CRUD tests'
 
-        stage('Build') {
-            steps {
-                echo 'Сборка frontend'
-
-                dir('client') {
-                    bat 'npm run build'
-                }
+                bat 'docker run --rm devops-lab-backend:ci-%BUILD_NUMBER% python manage.py test'
             }
         }
 
@@ -59,61 +41,32 @@ pipeline {
             }
 
             steps {
-                echo 'Остановка старой версии приложения'
+                echo 'Preparing Docker images for deployment'
 
-                bat '''
-                    powershell -NoProfile -Command "$p = Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue; if ($p) { $p | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue } }"
-                    powershell -NoProfile -Command "$p = Get-NetTCPConnection -LocalPort 5173 -State Listen -ErrorAction SilentlyContinue; if ($p) { $p | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue } }"
-                '''
+                bat 'docker tag devops-lab-backend:ci-%BUILD_NUMBER% devops-lab-backend:local'
 
-                echo 'Обновление рабочей версии приложения'
+                bat 'docker tag devops-lab-frontend:ci-%BUILD_NUMBER% devops-lab-frontend:local'
 
-                bat '''
-                    if not exist "%DEPLOY_DIR%" mkdir "%DEPLOY_DIR%"
+                echo 'Updating running application'
 
-                    robocopy "%WORKSPACE%" "%DEPLOY_DIR%" /MIR /R:1 /W:1 ^
-                    /XD .git __pycache__ .pytest_cache ^
-                    /XF db.sqlite3 *.pyc
+                bat 'docker compose -p devops_lab -f "%WORKSPACE%\\compose.yaml" up -d --no-build --force-recreate'
 
-                    if %ERRORLEVEL% GEQ 8 exit /b %ERRORLEVEL%
-                    exit /b 0
-                '''
-
-                echo 'Применение миграций базы данных'
-
-                bat '''
-                    cd /d "%DEPLOY_DIR%"
-                    python manage.py migrate
-                '''
-
-                echo 'Запуск backend'
-
-                bat '''
-                    set JENKINS_NODE_COOKIE=dontKillMe
-                    powershell -NoProfile -Command "$env:JENKINS_NODE_COOKIE='dontKillMe'; Start-Process -FilePath 'python' -ArgumentList 'manage.py runserver 0.0.0.0:8000 --noreload' -WorkingDirectory '%DEPLOY_DIR%' -WindowStyle Hidden"
-                '''
-
-                echo 'Запуск frontend'
-
-                bat '''
-                    set JENKINS_NODE_COOKIE=dontKillMe
-                    powershell -NoProfile -Command "$env:JENKINS_NODE_COOKIE='dontKillMe'; Start-Process -FilePath 'cmd.exe' -ArgumentList '/c npm run dev -- --host 0.0.0.0 --port 5173' -WorkingDirectory '%DEPLOY_DIR%\\client' -WindowStyle Hidden"
-                '''
+                echo 'Deployment completed'
             }
         }
     }
 
     post {
         success {
-            echo "Pipeline для ${env.GIT_BRANCH} успешно завершен"
+            echo "Pipeline for ${env.GIT_BRANCH} completed successfully"
         }
 
         failure {
-            echo "Pipeline для ${env.GIT_BRANCH} завершен с ошибкой"
+            echo "Pipeline for ${env.GIT_BRANCH} failed"
         }
 
         aborted {
-            echo 'Предыдущая сборка отменена новой сборкой'
+            echo 'Previous pipeline was aborted'
         }
     }
 }
