@@ -100,7 +100,7 @@ pipeline {
 
                     bat '''
                         @echo off
-                	echo %DOCKER_TOKEN% | docker login -u %DOCKER_USER% --password-stdin
+                	powershell -NoProfile -Command "[Console]::Out.Write($env:DOCKER_TOKEN)" | docker login -u "%DOCKER_USER%" --password-stdin
             	    '''
 
 		    bat '''
