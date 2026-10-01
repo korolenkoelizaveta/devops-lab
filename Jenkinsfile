@@ -100,42 +100,27 @@ pipeline {
 
                     bat '''
                         @echo off
+                	echo %DOCKER_TOKEN% | docker login -u %DOCKER_USER% --password-stdin
+            	    '''
 
-                        echo %DOCKER_TOKEN% | docker login ^
-                        -u %DOCKER_USER% ^
-                        --password-stdin
+		    bat '''
+                	docker tag devops-lab-backend:ci-%BUILD_NUMBER% elizavetakek/devops-lab-backend:%BUILD_NUMBER%
+                	docker tag devops-lab-backend:ci-%BUILD_NUMBER% elizavetakek/devops-lab-backend:latest
+            	    '''
 
-                        docker tag ^
-                        devops-lab-backend:ci-%BUILD_NUMBER% ^
-                        elizavetakek/devops-lab-backend:%BUILD_NUMBER%
+            	    bat '''
+                	docker tag devops-lab-frontend:ci-%BUILD_NUMBER% elizavetakek/devops-lab-frontend:%BUILD_NUMBER%
+                	docker tag devops-lab-frontend:ci-%BUILD_NUMBER% elizavetakek/devops-lab-frontend:latest
+            	    '''
 
-                        docker tag ^
-                        devops-lab-backend:ci-%BUILD_NUMBER% ^
-                        elizavetakek/devops-lab-backend:latest
+            	    bat 'docker push elizavetakek/devops-lab-backend:%BUILD_NUMBER%'
+            	    bat 'docker push elizavetakek/devops-lab-backend:latest'
 
-                        docker tag ^
-                        devops-lab-frontend:ci-%BUILD_NUMBER% ^
-                        elizavetakek/devops-lab-frontend:%BUILD_NUMBER%
+            	    bat 'docker push elizavetakek/devops-lab-frontend:%BUILD_NUMBER%'
+            	    bat 'docker push elizavetakek/devops-lab-frontend:latest'
 
-                        docker tag ^
-                        devops-lab-frontend:ci-%BUILD_NUMBER% ^
-                        elizavetakek/devops-lab-frontend:latest
+            	    bat 'docker logout'
 
-
-                        docker push ^
-                        elizavetakek/devops-lab-backend:%BUILD_NUMBER%
-
-                        docker push ^
-                        elizavetakek/devops-lab-backend:latest
-
-                        docker push ^
-                        elizavetakek/devops-lab-frontend:%BUILD_NUMBER%
-
-                        docker push ^
-                        elizavetakek/devops-lab-frontend:latest
-
-                        docker logout
-                    '''
                 }
             }
         }
