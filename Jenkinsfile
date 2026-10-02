@@ -24,15 +24,14 @@ pipeline {
                 echo 'Сборка Docker-образа backend'
 
                 bat '''
-                    docker build ^
-                    -t devops-lab-backend:ci-%BUILD_NUMBER% .
+                    docker build -t devops-lab-backend:ci-%BUILD_NUMBER% .
+                    
                 '''
 
                 echo 'Сборка Docker-образа frontend'
 
                 bat '''
-                    docker build ^
-                    -t devops-lab-frontend:ci-%BUILD_NUMBER% ./client
+                    docker build -t devops-lab-frontend:ci-%BUILD_NUMBER% ./client   
                 '''
             }
         }
@@ -43,9 +42,8 @@ pipeline {
                 echo 'Запуск 20 CRUD-тестов внутри Docker'
 
                 bat '''
-                    docker run --rm ^
-                    devops-lab-backend:ci-%BUILD_NUMBER% ^
-                    python manage.py test
+                    docker run --rm devops-lab-backend:ci-%BUILD_NUMBER% python manage.py test
+
                 '''
             }
         }
@@ -138,21 +136,15 @@ pipeline {
                 echo 'Получение проверенных образов из Docker Registry'
 
                 bat '''
-                    docker compose ^
-                    -p devops_lab ^
-                    -f "%WORKSPACE%\\compose.yaml" ^
-                    pull
+                    docker compose -p devops_lab -f "%WORKSPACE%\\compose.yaml" pull
+                    
                 '''
 
                 echo 'Обновление работающего приложения'
 
                 bat '''
-                    docker compose ^
-                    -p devops_lab ^
-                    -f "%WORKSPACE%\\compose.yaml" ^
-                    up -d ^
-                    --no-build ^
-                    --force-recreate
+                    docker compose -p devops_lab -f "%WORKSPACE%\\compose.yaml" up -d --no-build --force-recreate
+                    
                 '''
 
                 echo 'Deployment completed'
