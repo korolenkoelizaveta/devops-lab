@@ -168,7 +168,7 @@ pipeline {
                         "%KUBECTL%" get nodes || exit /b 1
 
                         echo Применение Kubernetes-манифестов
-                        "%KUBECTL%" apply -f k8s/ || exit /b 1
+                        "%KUBECTL%" apply -n devops-lab -f k8s/ || exit /b 1
 
                         echo Обновление Docker-образов
                         "%KUBECTL%" rollout restart deployment/backend -n devops-lab || exit /b 1
