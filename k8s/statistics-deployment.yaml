@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: statistics
+  namespace: devops-lab
+
+spec:
+  replicas: 2
+
+  selector:
+    matchLabels:
+      app: statistics
+
+  template:
+    metadata:
+      labels:
+        app: statistics
+
+    spec:
+      containers:
+        - name: statistics
+          image: elizavetakek/devops-lab-statistics:latest
+          imagePullPolicy: Always
+
+          ports:
+            - containerPort: 8000
+
+          env:
+            - name: BACKEND_URL
+              value: "http://backend:8000"
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 3
+            periodSeconds: 5

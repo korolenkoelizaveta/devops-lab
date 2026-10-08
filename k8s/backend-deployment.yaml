@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: backend
+  namespace: devops-lab
+
+spec:
+  replicas: 1
+
+  strategy:
+    type: Recreate
+
+  selector:
+    matchLabels:
+      app: backend
+
+  template:
+    metadata:
+      labels:
+        app: backend
+
+    spec:
+      containers:
+        - name: backend
+          image: elizavetakek/devops-lab-backend:latest
+          imagePullPolicy: Always
+
+          ports:
+            - containerPort: 8000
+
+          env:
+            - name: DJANGO_DB_PATH
+              value: /data/db.sqlite3
+
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              python manage.py migrate &&
+              exec python manage.py runserver 0.0.0.0:8000 --noreload
+
+          volumeMounts:
+            - name: sqlite-data
+              mountPath: /data
+
+          readinessProbe:
+            tcpSocket:
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+
+      volumes:
+        - name: sqlite-data
+          persistentVolumeClaim:
+            claimName: sqlite-pvc

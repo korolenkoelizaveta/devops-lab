@@ -25,13 +25,18 @@ pipeline {
 
                 bat '''
                     docker build -t devops-lab-backend:ci-%BUILD_NUMBER% .
-                    
                 '''
 
                 echo 'Сборка Docker-образа frontend'
 
                 bat '''
-                    docker build -t devops-lab-frontend:ci-%BUILD_NUMBER% ./client   
+                    docker build -t devops-lab-frontend:ci-%BUILD_NUMBER% ./client
+                '''
+
+                echo 'Сборка Docker-образа statistics'
+
+                bat '''
+                    docker build -t devops-lab-statistics:ci-%BUILD_NUMBER% ./statistics-service
                 '''
             }
         }
@@ -51,22 +56,27 @@ pipeline {
 
         stage('Artifact') {
             steps {
-                echo 'Формирование артефакта сборки'
+                echo 'Формирование артефакта для Kubernetes'
 
                 bat '''
                     if exist release rmdir /S /Q release
-                    mkdir release
 
-                    copy compose.yaml release\\
+                    mkdir release
+                    mkdir release\\k8s
+
                     copy Dockerfile release\\Dockerfile.backend
                     copy client\\Dockerfile release\\Dockerfile.frontend
-                    copy client\\nginx.conf release\\nginx.conf
+                    copy statistics-service\\Dockerfile release\\Dockerfile.statistics
+
+                    copy k8s\\*.yaml release\\k8s\\
 
                     echo Jenkins build: %BUILD_NUMBER% > release\\build-info.txt
                     echo Branch: %GIT_BRANCH% >> release\\build-info.txt
                     echo Commit: %GIT_COMMIT% >> release\\build-info.txt
+
                     echo Backend image: devops-lab-backend:ci-%BUILD_NUMBER% >> release\\build-info.txt
                     echo Frontend image: devops-lab-frontend:ci-%BUILD_NUMBER% >> release\\build-info.txt
+                    echo Statistics image: devops-lab-statistics:ci-%BUILD_NUMBER% >> release\\build-info.txt
                 '''
 
                 archiveArtifacts(
@@ -98,26 +108,34 @@ pipeline {
 
                     bat '''
                         @echo off
-                	powershell -NoProfile -Command "[Console]::Out.Write($env:DOCKER_TOKEN)" | docker login -u "%DOCKER_USER%" --password-stdin
-            	    '''
+                        powershell -NoProfile -Command "[Console]::Out.Write($env:DOCKER_TOKEN)" | docker login -u "%DOCKER_USER%" --password-stdin
+                    '''
 
-		    bat '''
-                	docker tag devops-lab-backend:ci-%BUILD_NUMBER% elizavetakek/devops-lab-backend:%BUILD_NUMBER%
-                	docker tag devops-lab-backend:ci-%BUILD_NUMBER% elizavetakek/devops-lab-backend:latest
-            	    '''
+                    bat '''
+                        docker tag devops-lab-backend:ci-%BUILD_NUMBER% elizavetakek/devops-lab-backend:%BUILD_NUMBER%
+                        docker tag devops-lab-backend:ci-%BUILD_NUMBER% elizavetakek/devops-lab-backend:latest
+                    '''
 
-            	    bat '''
-                	docker tag devops-lab-frontend:ci-%BUILD_NUMBER% elizavetakek/devops-lab-frontend:%BUILD_NUMBER%
-                	docker tag devops-lab-frontend:ci-%BUILD_NUMBER% elizavetakek/devops-lab-frontend:latest
-            	    '''
+                    bat '''
+                        docker tag devops-lab-frontend:ci-%BUILD_NUMBER% elizavetakek/devops-lab-frontend:%BUILD_NUMBER%
+                        docker tag devops-lab-frontend:ci-%BUILD_NUMBER% elizavetakek/devops-lab-frontend:latest
+                    '''
 
-            	    bat 'docker push elizavetakek/devops-lab-backend:%BUILD_NUMBER%'
-            	    bat 'docker push elizavetakek/devops-lab-backend:latest'
+                    bat '''
+                        docker tag devops-lab-statistics:ci-%BUILD_NUMBER% elizavetakek/devops-lab-statistics:%BUILD_NUMBER%
+                        docker tag devops-lab-statistics:ci-%BUILD_NUMBER% elizavetakek/devops-lab-statistics:latest
+                    '''
 
-            	    bat 'docker push elizavetakek/devops-lab-frontend:%BUILD_NUMBER%'
-            	    bat 'docker push elizavetakek/devops-lab-frontend:latest'
+                    bat 'docker push elizavetakek/devops-lab-backend:%BUILD_NUMBER%'
+                    bat 'docker push elizavetakek/devops-lab-backend:latest'
 
-            	    bat 'docker logout'
+                    bat 'docker push elizavetakek/devops-lab-frontend:%BUILD_NUMBER%'
+                    bat 'docker push elizavetakek/devops-lab-frontend:latest'
+
+                    bat 'docker push elizavetakek/devops-lab-statistics:%BUILD_NUMBER%'
+                    bat 'docker push elizavetakek/devops-lab-statistics:latest'
+
+                    bat 'docker logout'
 
                 }
             }
@@ -133,21 +151,41 @@ pipeline {
             }
 
             steps {
-                echo 'Получение проверенных образов из Docker Registry'
+                echo 'Развертывание приложения в Kubernetes'
 
-                bat '''
-                    docker compose -p devops_lab -f "%WORKSPACE%\\compose.yaml" pull
-                    
-                '''
+                withCredentials([
+                    file(
+                        credentialsId: 'kubeconfig-docker-desktop',
+                        variable: 'KUBECONFIG'
+                    )
+                ]) {
 
-                echo 'Обновление работающего приложения'
+                    bat '''
+                        @echo off
+                        set "KUBECTL=C:\\Program Files\\Docker\\Docker\\resources\\bin\\kubectl.exe"
 
-                bat '''
-                    docker compose -p devops_lab -f "%WORKSPACE%\\compose.yaml" up -d --no-build --force-recreate
-                    
-                '''
+                        echo Проверка подключения к Kubernetes
+                        "%KUBECTL%" get nodes || exit /b 1
 
-                echo 'Deployment completed'
+                        echo Применение Kubernetes-манифестов
+                        "%KUBECTL%" apply -f k8s/ || exit /b 1
+
+                        echo Обновление Docker-образов
+                        "%KUBECTL%" rollout restart deployment/backend -n devops-lab || exit /b 1
+                        "%KUBECTL%" rollout restart deployment/frontend -n devops-lab || exit /b 1
+                        "%KUBECTL%" rollout restart deployment/statistics -n devops-lab || exit /b 1
+
+                        echo Ожидание готовности сервисов
+                        "%KUBECTL%" rollout status deployment/backend -n devops-lab --timeout=180s || exit /b 1
+                        "%KUBECTL%" rollout status deployment/frontend -n devops-lab --timeout=180s || exit /b 1
+                        "%KUBECTL%" rollout status deployment/statistics -n devops-lab --timeout=180s || exit /b 1
+
+                        echo Проверка Pod
+                        "%KUBECTL%" get pods -n devops-lab || exit /b 1
+                    '''
+                }
+
+                echo 'Kubernetes deployment completed'
             }
         }
     }

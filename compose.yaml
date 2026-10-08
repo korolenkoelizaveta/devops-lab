@@ -34,7 +34,20 @@ services:
 
     depends_on:
       - backend
+      - statistics
 
+  statistics:
+    build:
+      context: ./statistics-service
+      dockerfile: Dockerfile
+
+    image: elizavetakek/devops-lab-statistics:latest
+
+    environment:
+      BACKEND_URL: http://backend:8000
+
+    depends_on:
+      - backend
 
 volumes:
   sqlite_data:
