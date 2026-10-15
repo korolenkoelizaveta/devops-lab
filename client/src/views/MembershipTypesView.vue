@@ -8,7 +8,6 @@ const auth = useAuthStore()
 
 const membershipTypes = ref([])
 const loading = ref(false)
-const stats = ref([])
 
 const membershipTypeToAdd = ref({ type: "", description: "" })
 const membershipTypeToEdit = ref({})
@@ -24,15 +23,12 @@ const canManageMembershipTypes = computed(() => {
 async function fetchMembershipTypes() {
   loading.value = true
 
-  const [listRes, statsRes] = await Promise.all([
-    axios.get("/api/membershiptype/"),
-    axios.get("/api/membershiptype/stats/"),
-  ])
-
-  membershipTypes.value = listRes.data
-  stats.value = Array.isArray(statsRes.data) ? statsRes.data : []
-
-  loading.value = false
+  try {
+    const response = await axios.get("/api/membershiptype/")
+    membershipTypes.value = response.data
+  } finally {
+    loading.value = false
+  }
 }
 
 async function onMembershipTypeAdd() {
@@ -79,65 +75,32 @@ onBeforeMount(async () => {
 </script>
 
 <template>
-  <div
-    class="modal fade"
-    id="editMembershipTypeModal"
-    tabindex="-1"
-    v-if="canManageMembershipTypes"
-  >
+  <div class="modal fade" id="editMembershipTypeModal" tabindex="-1" v-if="canManageMembershipTypes">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
-          <h1 class="modal-title fs-5">
-            Редактировать тип абонемента
-          </h1>
-          <button
-            type="button"
-            class="btn-close"
-            data-bs-dismiss="modal"
-            aria-label="Close"
-          ></button>
+          <h1 class="modal-title fs-5">Редактировать тип абонемента</h1>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
           <div class="row g-2">
             <div class="col">
               <div class="form-floating">
-                <input
-                  type="text"
-                  class="form-control"
-                  v-model="membershipTypeToEdit.type"
-                >
+                <input type="text" class="form-control" v-model="membershipTypeToEdit.type">
                 <label>Тип абонемента</label>
               </div>
             </div>
             <div class="col">
               <div class="form-floating">
-                <input
-                  type="text"
-                  class="form-control"
-                  v-model="membershipTypeToEdit.description"
-                >
+                <input type="text" class="form-control" v-model="membershipTypeToEdit.description">
                 <label>Описание</label>
               </div>
             </div>
           </div>
         </div>
         <div class="modal-footer">
-          <button
-            type="button"
-            class="btn btn-secondary"
-            data-bs-dismiss="modal"
-          >
-            Закрыть
-          </button>
-          <button
-            data-bs-dismiss="modal"
-            type="button"
-            class="btn btn-primary"
-            @click="onUpdateMembershipType"
-          >
-            Сохранить
-          </button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+          <button data-bs-dismiss="modal" type="button" class="btn btn-primary" @click="onUpdateMembershipType">Сохранить</button>
         </div>
       </div>
     </div>
@@ -148,23 +111,13 @@ onBeforeMount(async () => {
       <div class="row g-2">
         <div class="col">
           <div class="form-floating">
-            <input
-              type="text"
-              class="form-control"
-              v-model="membershipTypeToAdd.type"
-              required
-            >
+            <input type="text" class="form-control" v-model="membershipTypeToAdd.type" required>
             <label>Тип абонемента</label>
           </div>
         </div>
         <div class="col">
           <div class="form-floating">
-            <input
-              type="text"
-              class="form-control"
-              v-model="membershipTypeToAdd.description"
-              required
-            >
+            <input type="text" class="form-control" v-model="membershipTypeToAdd.description" required>
             <label>Описание</label>
           </div>
         </div>
@@ -176,52 +129,16 @@ onBeforeMount(async () => {
       </div>
     </div>
 
-    <div
-      v-if="canManageMembershipTypes && stats && stats.length"
-      class="mb-3"
-    >
-      <div class="table-responsive small" style="border-radius: 8px;" >
-        <table class="table table-sm align-middle mb-0">
-          <thead>
-            <tr>
-              <th style="background:#87CEFA;">Тип</th>
-              <th style="background:#87CEFA;">Кол-во пользователей</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in stats" :key="row.id">
-              <td style="background:#d7effd;">{{ row.type }}</td>
-              <td style="background:#d7effd;">{{ row.users_count }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
     <div v-if="loading" class="p-3 text-center">Загрузка…</div>
     <div v-else>
-      <div
-        v-for="item in membershipTypes"
-        :key="item.id"
-        class="membershipType-item"
-      >
+      <div v-for="item in membershipTypes" :key="item.id" class="membershipType-item">
         <div>{{ item.type }}</div>
         <div>{{ item.description }}</div>
 
-        <button
-          v-if="canManageMembershipTypes"
-          class="btn btn-success"
-          @click="onMembershipTypeEditClick(item)"
-          data-bs-toggle="modal"
-          data-bs-target="#editMembershipTypeModal"
-        >
+        <button v-if="canManageMembershipTypes" class="btn btn-success" @click="onMembershipTypeEditClick(item)" data-bs-toggle="modal" data-bs-target="#editMembershipTypeModal">
           <i class="bi bi-pen-fill"></i>
         </button>
-        <button
-          v-if="canManageMembershipTypes"
-          class="btn btn-danger"
-          @click="onRemoveClick(item)"
-        >
+        <button v-if="canManageMembershipTypes" class="btn btn-danger" @click="onRemoveClick(item)">
           <i class="bi bi-x"></i>
         </button>
       </div>

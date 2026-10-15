@@ -14,6 +14,12 @@ data:
         root /usr/share/nginx/html;
         index index.html;
 
+        location ^~ /statistics/ {
+            proxy_pass http://statistics:8000;
+            proxy_set_header Host $http_host;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
         location ~ ^/api/(users|membershiptype|membership|workoutsession)/stats/$ {
             proxy_pass http://statistics:8000;
             proxy_set_header Host $http_host;

@@ -35,86 +35,38 @@ onBeforeMount(async () => {
 
 <template>
   <RouterView v-if="!showLayout" />
-
   <div v-else>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
       <div class="container-fluid">
-        <RouterLink class="navbar-brand" to="/users">
-          Gym5
-        </RouterLink>
+        <RouterLink class="navbar-brand" to="/users">Gym5</RouterLink>
 
-        <button
-          class="navbar-toggler"
-          type="button"
-          data-bs-toggle="collapse"
-          data-bs-target="#mainNavbar"
-        >
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar">
           <span class="navbar-toggler-icon"></span>
         </button>
 
         <div class="collapse navbar-collapse" id="mainNavbar">
           <ul class="navbar-nav me-auto mb-2 mb-lg-0">
             <li class="nav-item">
-              <RouterLink
-                to="/users"
-                class="nav-link"
-                :class="{ active: route.name === 'UsersView' }"
-              >
-                Пользователи
-              </RouterLink>
+              <RouterLink to="/users" class="nav-link" :class="{ active: route.name === 'UsersView' }">Пользователи</RouterLink>
             </li>
             <li class="nav-item">
-              <RouterLink
-                to="/memberships"
-                class="nav-link"
-                :class="{ active: route.name === 'MembershipsView' }"
-              >
-                Абонементы
-              </RouterLink>
+              <RouterLink to="/memberships" class="nav-link" :class="{ active: route.name === 'MembershipsView' }">Абонементы</RouterLink>
             </li>
             <li class="nav-item">
-              <RouterLink
-                to="/membershiptypes"
-                class="nav-link"
-                :class="{ active: route.name === 'MembershipTypesView' }"
-              >
-                Типы абонементов
-              </RouterLink>
+              <RouterLink to="/membershiptypes" class="nav-link" :class="{ active: route.name === 'MembershipTypesView' }" >Типы абонементов</RouterLink>
             </li>
             <li class="nav-item">
-              <RouterLink
-                to="/workoutsessions"
-                class="nav-link"
-                :class="{ active: route.name === 'WorkoutSessionsView' }"
-              >
-                Тренировки
-              </RouterLink>
+              <RouterLink to="/workoutsessions" class="nav-link" :class="{ active: route.name === 'WorkoutSessionsView' }">Тренировки</RouterLink>
+            </li>
+            <li class="nav-item">
+              <RouterLink to="/stats" class="nav-link" :class="{ active: route.name === 'StatisticsView' }">Статистика</RouterLink>
             </li>
           </ul>
           <div class="d-flex align-items-center">
-          <RouterLink
-            v-if="!auth.isAuthenticated"
-            :to="{ name: 'LoginView' }"
-            class="btn btn-outline-light btn-sm"
-            title="Войти"
-            aria-label="Войти"
-          >
-            <i class="bi bi-person-circle fs-5"></i>
-          </RouterLink>
+            <RouterLink v-if="!auth.isAuthenticated" :to="{ name: 'LoginView' }" class="btn btn-outline-light btn-sm" title="Войти" aria-label="Войти"><i class="bi bi-person-circle fs-5"></i></RouterLink>
 
-            <span
-              v-if="auth.isAuthenticated && userLabel"
-              class="text-light me-3"
-            >
-              {{ userLabel }}
-            </span>
-            <button
-              v-if="auth.isAuthenticated"
-              class="btn btn-outline-light btn-sm"
-              @click="onLogout"
-            >
-              Выйти
-            </button>
+            <span v-if="auth.isAuthenticated && userLabel" class="text-light me-3">{{ userLabel }}</span>
+            <button v-if="auth.isAuthenticated" class="btn btn-outline-light btn-sm" @click="onLogout">Выйти</button>
           </div>
         </div>
       </div>

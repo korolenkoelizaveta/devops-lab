@@ -11,7 +11,6 @@ const memberships = ref([])
 const clients = ref([])
 const membershipTypes = ref([])
 const loading = ref(false)
-const stats = ref(null)
 
 const profile = computed(() => auth.user)
 
@@ -63,15 +62,12 @@ const filteredMemberships = computed(() => {
 async function fetchMemberships() {
   loading.value = true
 
-  const [listRes, statsRes] = await Promise.all([
-    axios.get("/api/membership/"),
-    axios.get("/api/membership/stats/"),
-  ])
-
-  memberships.value = listRes.data
-  stats.value = statsRes.data
-
-  loading.value = false
+  try {
+    const response = await axios.get("/api/membership/")
+    memberships.value = response.data
+  } finally {
+    loading.value = false
+  }
 }
 
 async function fetchClients() {
@@ -127,22 +123,12 @@ onBeforeMount(async () => {
 </script>
 
 <template>
-  <div
-    class="modal fade"
-    id="editMembershipModal"
-    tabindex="-1"
-    v-if="canManageMemberships"
-  >
+  <div class="modal fade" id="editMembershipModal" tabindex="-1" v-if="canManageMemberships">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
           <h1 class="modal-title fs-5">Редактировать абонемент</h1>
-          <button
-            type="button"
-            class="btn-close"
-            data-bs-dismiss="modal"
-            aria-label="Close"
-          ></button>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
 
         <div class="modal-body">
@@ -150,13 +136,7 @@ onBeforeMount(async () => {
             <div class="col">
               <div class="form-floating">
                 <select class="form-select" v-model="membershipToEdit.client">
-                  <option
-                    :value="client.id"
-                    v-for="client in clients"
-                    :key="`edit-c-${client.id}`"
-                  >
-                    {{ client.name }}
-                  </option>
+                  <option :value="client.id" v-for="client in clients" :key="`edit-c-${client.id}`">{{ client.name }}</option>
                 </select>
                 <label>Клиент</label>
               </div>
@@ -164,17 +144,8 @@ onBeforeMount(async () => {
 
             <div class="col">
               <div class="form-floating">
-                <select
-                  class="form-select"
-                  v-model="membershipToEdit.membership_type"
-                >
-                  <option
-                    :value="type.id"
-                    v-for="type in membershipTypes"
-                    :key="`edit-t-${type.id}`"
-                  >
-                    {{ type.type }}
-                  </option>
+                <select class="form-select" v-model="membershipToEdit.membership_type">
+                  <option :value="type.id" v-for="type in membershipTypes" :key="`edit-t-${type.id}`" >{{ type.type }}</option>
                 </select>
                 <label>Тип абонемента</label>
               </div>
@@ -182,11 +153,7 @@ onBeforeMount(async () => {
 
             <div class="col-auto d-flex align-items-center">
               <div class="form-check form-switch">
-                <input
-                  class="form-check-input"
-                  type="checkbox"
-                  v-model="membershipToEdit.is_active"
-                >
+                <input class="form-check-input" type="checkbox" v-model="membershipToEdit.is_active">
                 <label class="form-check-label ms-2">Активен</label>
               </div>
             </div>
@@ -194,21 +161,8 @@ onBeforeMount(async () => {
         </div>
 
         <div class="modal-footer">
-          <button
-            type="button"
-            class="btn btn-secondary"
-            data-bs-dismiss="modal"
-          >
-            Закрыть
-          </button>
-          <button
-            data-bs-dismiss="modal"
-            type="button"
-            class="btn btn-primary"
-            @click="onUpdateMembership"
-          >
-            Сохранить
-          </button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" >Закрыть</button>
+          <button data-bs-dismiss="modal" type="button" class="btn btn-primary" @click="onUpdateMembership">Сохранить</button>
         </div>
       </div>
     </div>
@@ -219,18 +173,8 @@ onBeforeMount(async () => {
       <div class="row g-2">
         <div class="col">
           <div class="form-floating">
-            <select
-              class="form-select"
-              v-model="membershipToAdd.client"
-              required
-            >
-              <option
-                :value="client.id"
-                v-for="client in clients"
-                :key="`add-c-${client.id}`"
-              >
-                {{ client.name }}
-              </option>
+            <select class="form-select" v-model="membershipToAdd.client" required>
+              <option :value="client.id" v-for="client in clients" :key="`add-c-${client.id}`" >{{ client.name }}</option>
             </select>
             <label>Клиент</label>
           </div>
@@ -238,18 +182,8 @@ onBeforeMount(async () => {
 
         <div class="col-auto">
           <div class="form-floating">
-            <select
-              class="form-select"
-              v-model="membershipToAdd.membership_type"
-              required
-            >
-              <option
-                :value="type.id"
-                v-for="type in membershipTypes"
-                :key="`add-t-${type.id}`"
-              >
-                {{ type.type }}
-              </option>
+            <select class="form-select" v-model="membershipToAdd.membership_type" required>
+              <option :value="type.id" v-for="type in membershipTypes" :key="`add-t-${type.id}`">{{ type.type }}</option>
             </select>
             <label>Тип абонемента</label>
           </div>
@@ -257,11 +191,7 @@ onBeforeMount(async () => {
 
         <div class="col">
           <div class="form-check form-switch h-100 d-flex align-items-center">
-            <input
-              class="form-check-input"
-              type="checkbox"
-              v-model="membershipToAdd.is_active"
-            >
+            <input class="form-check-input" type="checkbox" v-model="membershipToAdd.is_active">
             <label class="form-check-label ms-2">Активен</label>
           </div>
         </div>
@@ -275,55 +205,21 @@ onBeforeMount(async () => {
     </div>
   </div>
 
-  <div
-    class="container-fluid mt-2"
-    v-if="canManageMemberships && stats"
-  >
-    <div class="alert alert-info py-2 mb-2">
-      <strong>Статистика абонементов:</strong>
-      <span class="ms-2">
-        всего: {{ stats.count }},
-        активных: {{ stats.active }},
-        неактивных: {{ stats.inactive }}
-      </span>
-    </div>
-  </div>
-
-  <div
-    class="container-fluid mb-2"
-    v-if="!isClientProfile"
-  >
+  <div class="container-fluid mb-2" v-if="!isClientProfile">
     <div class="row g-2">
       <div class="col-auto">
-        <input
-          type="text"
-          class="form-control"
-          v-model="clientNameFilter"
-          placeholder="Фильтр по ФИО клиента"
-        >
+        <input type="text" class="form-control" v-model="clientNameFilter" placeholder="Фильтр по ФИО клиента">
       </div>
 
       <div class="col-auto">
-        <select
-          class="form-select"
-          v-model="membershipTypeFilter"
-        >
+        <select class="form-select" v-model="membershipTypeFilter">
           <option value="">Все типы</option>
-          <option
-            v-for="type in membershipTypeOptions"
-            :key="type.id"
-            :value="type.id"
-          >
-            {{ type.type }}
-          </option>
+          <option v-for="type in membershipTypeOptions" :key="type.id" :value="type.id" >{{ type.type }}</option>
         </select>
       </div>
 
       <div class="col-auto">
-        <select
-          class="form-select"
-          v-model="isActiveFilter"
-        >
+        <select class="form-select" v-model="isActiveFilter">
           <option value="">Все абонементы</option>
           <option value="true">Только активные</option>
           <option value="false">Только неактивные</option>
@@ -334,29 +230,15 @@ onBeforeMount(async () => {
 
   <div v-if="loading" class="p-3 text-center">Загрузка…</div>
   <div v-else>
-    <div
-      v-for="item in filteredMemberships"
-      :key="item.id"
-      class="membership-item"
-    >
+    <div v-for="item in filteredMemberships" :key="item.id" class="membership-item">
       <div>{{ clientsById[item.client]?.name }}</div>
       <div>{{ membershipTypeById[item.membership_type]?.type }}</div>
       <div>{{ item.is_active ? "Активен" : "Не активен" }}</div>
 
-      <button
-        v-if="canManageMemberships"
-        class="btn btn-success"
-        @click="onMembershipEditClick(item)"
-        data-bs-toggle="modal"
-        data-bs-target="#editMembershipModal"
-      >
+      <button v-if="canManageMemberships" class="btn btn-success" @click="onMembershipEditClick(item)" data-bs-toggle="modal" data-bs-target="#editMembershipModal">
         <i class="bi bi-pen-fill"></i>
       </button>
-      <button
-        v-if="canManageMemberships"
-        class="btn btn-danger"
-        @click="onRemoveClick(item)"
-      >
+      <button v-if="canManageMemberships" class="btn btn-danger" @click="onRemoveClick(item)">
         <i class="bi bi-x"></i>
       </button>
     </div>

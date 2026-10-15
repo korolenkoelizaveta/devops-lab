@@ -6,6 +6,7 @@ import MembershipsView from "@/views/MembershipsView.vue"
 import MembershipTypesView from "@/views/MembershipTypesView.vue"
 import WorkoutSessionsView from "@/views/WorkoutSessionsView.vue"
 import LoginView from "@/views/LoginView.vue"
+import StatisticsView from "@/views/StatisticsView.vue"
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -40,6 +41,11 @@ const router = createRouter({
       path: "/workoutsessions",
       name: "WorkoutSessionsView",
       component: WorkoutSessionsView,
+    },
+    {
+      path: "/stats",
+      name: "StatisticsView",
+      component: StatisticsView,
     },
   ],
 })

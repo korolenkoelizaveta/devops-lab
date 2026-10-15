@@ -32,12 +32,6 @@ pipeline {
                 bat '''
                     docker build -t devops-lab-frontend:ci-%BUILD_NUMBER% ./client
                 '''
-
-                echo 'Сборка Docker-образа statistics'
-
-                bat '''
-                    docker build -t devops-lab-statistics:ci-%BUILD_NUMBER% ./statistics-service
-                '''
             }
         }
 
@@ -66,7 +60,6 @@ pipeline {
 
                     copy Dockerfile release\\Dockerfile.backend
                     copy client\\Dockerfile release\\Dockerfile.frontend
-                    copy statistics-service\\Dockerfile release\\Dockerfile.statistics
 
                     copy k8s\\*.yaml release\\k8s\\
 
@@ -76,7 +69,6 @@ pipeline {
 
                     echo Backend image: devops-lab-backend:ci-%BUILD_NUMBER% >> release\\build-info.txt
                     echo Frontend image: devops-lab-frontend:ci-%BUILD_NUMBER% >> release\\build-info.txt
-                    echo Statistics image: devops-lab-statistics:ci-%BUILD_NUMBER% >> release\\build-info.txt
                 '''
 
                 archiveArtifacts(
@@ -121,19 +113,11 @@ pipeline {
                         docker tag devops-lab-frontend:ci-%BUILD_NUMBER% elizavetakek/devops-lab-frontend:latest
                     '''
 
-                    bat '''
-                        docker tag devops-lab-statistics:ci-%BUILD_NUMBER% elizavetakek/devops-lab-statistics:%BUILD_NUMBER%
-                        docker tag devops-lab-statistics:ci-%BUILD_NUMBER% elizavetakek/devops-lab-statistics:latest
-                    '''
-
                     bat 'docker push elizavetakek/devops-lab-backend:%BUILD_NUMBER%'
                     bat 'docker push elizavetakek/devops-lab-backend:latest'
 
                     bat 'docker push elizavetakek/devops-lab-frontend:%BUILD_NUMBER%'
                     bat 'docker push elizavetakek/devops-lab-frontend:latest'
-
-                    bat 'docker push elizavetakek/devops-lab-statistics:%BUILD_NUMBER%'
-                    bat 'docker push elizavetakek/devops-lab-statistics:latest'
 
                     bat 'docker logout'
 
@@ -168,17 +152,15 @@ pipeline {
                         "%KUBECTL%" get nodes || exit /b 1
 
                         echo Применение Kubernetes-манифестов
-                        "%KUBECTL%" apply -n devops-lab -f k8s/ || exit /b 1
+                        "%KUBECTL%" apply -n devops-lab -f k8s/backend-deployment.yaml -f k8s/backend-service.yaml -f k8s/frontend-deployment.yaml -f k8s/frontend-service.yaml -f k8s/frontend-nginx-configmap.yaml -f k8s/sqlite-pvc.yaml || exit /b 1
 
                         echo Обновление Docker-образов
                         "%KUBECTL%" rollout restart deployment/backend -n devops-lab || exit /b 1
                         "%KUBECTL%" rollout restart deployment/frontend -n devops-lab || exit /b 1
-                        "%KUBECTL%" rollout restart deployment/statistics -n devops-lab || exit /b 1
 
                         echo Ожидание готовности сервисов
                         "%KUBECTL%" rollout status deployment/backend -n devops-lab --timeout=180s || exit /b 1
                         "%KUBECTL%" rollout status deployment/frontend -n devops-lab --timeout=180s || exit /b 1
-                        "%KUBECTL%" rollout status deployment/statistics -n devops-lab --timeout=180s || exit /b 1
 
                         echo Проверка Pod
                         "%KUBECTL%" get pods -n devops-lab || exit /b 1

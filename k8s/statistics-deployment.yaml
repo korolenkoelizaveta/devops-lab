@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: statistics
-          image: elizavetakek/devops-lab-statistics:latest
+          image: elizavetakek/gym-statistics:latest
           imagePullPolicy: Always
 
           ports:

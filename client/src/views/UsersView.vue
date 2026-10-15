@@ -8,7 +8,6 @@ const auth = useAuthStore()
 
 const users = ref([])
 const loading = ref(false)
-const stats = ref(null)
 
 const selectedRoleFilter = ref("")     
 const nameFilter = ref("")            
@@ -73,32 +72,15 @@ const filteredUsers = computed(() => {
   return res
 })
 
-const statsMessage = computed(() => {
-  if (!stats.value) return ""
-  const s = stats.value
-
-  if (s.clients === 0 && s.trainers > 0) {
-    return `Доступных тренеров: ${s.trainers}`
-  }
-
-  if (s.trainers === 0 && s.clients > 0) {
-    return `Моих клиентов: ${s.clients}`
-  }
-
-  return `Всего: ${s.count}, клиентов: ${s.clients}, тренеров: ${s.trainers}`
-})
-
 async function fetchUsers() {
   loading.value = true
 
-  const [usersRes, statsRes] = await Promise.all([
-    axios.get("/api/users/"),
-    axios.get("/api/users/stats/"),
-  ])
-
-  users.value = usersRes.data
-  stats.value = statsRes.data
-  loading.value = false
+  try {
+    const response = await axios.get("/api/users/")
+    users.value = response.data
+  } finally {
+    loading.value = false
+  }
 }
 
 async function onUserAdd() {
@@ -277,12 +259,7 @@ async function onExportXlsx() {
             <label>Специализация</label>
           </div>
 
-          <input
-            type="file"
-            class="form-control mb-2"
-            ref="editPictureRef"
-            @change="onEditPictureChange"
-          />
+          <input type="file" class="form-control mb-2" ref="editPictureRef" @change="onEditPictureChange" />
           <img :src="editImageUrl" v-if="editImageUrl" style="max-width:60px" alt="" />
         </div>
 
@@ -324,47 +301,27 @@ async function onExportXlsx() {
 
       <div class="col-auto" v-if="userToAdd.role === 'trainer'">
         <div class="form-floating">
-          <input
-            type="text"
-            class="form-control"
-            v-model="userToAdd.specialization"
-            required
-          />
+          <input type="text" class="form-control" v-model="userToAdd.specialization" required />
           <label>Специализация</label>
         </div>
       </div>
 
   <div class="col-auto">
     <div class="form-floating">
-      <input
-        type="text"
-        class="form-control"
-        v-model="userToAdd.username"
-        required
-      />
+      <input type="text" class="form-control" v-model="userToAdd.username" required />
       <label>Логин</label>
     </div>
   </div>
 
   <div class="col-auto">
     <div class="form-floating">
-      <input
-        type="password"
-        class="form-control"
-        v-model="userToAdd.password"
-        required
-      />
+      <input type="password" class="form-control" v-model="userToAdd.password" required />
       <label>Пароль</label>
     </div>
   </div>
 
       <div class="col-auto">
-        <input
-          type="file"
-          class="form-control"
-          ref="userPictureRef"
-          @change="onAddPictureChange"
-        />
+        <input type="file" class="form-control" ref="userPictureRef" @change="onAddPictureChange" />
       </div>
       <div class="col-auto">
         <img :src="userAddImageUrl" v-if="userAddImageUrl" style="max-width:60px" alt="" />
@@ -384,12 +341,7 @@ async function onExportXlsx() {
   </div>
 
   <div class="col-auto">
-    <input
-      type="text"
-      class="form-control"
-      v-model="nameFilter"
-      placeholder="Фильтр по ФИО"
-    />
+    <input type="text" class="form-control" v-model="nameFilter" placeholder="Фильтр по ФИО" />
   </div>
 
   <div class="col-auto" v-if="!isTrainerProfile">
@@ -409,30 +361,12 @@ async function onExportXlsx() {
   </div>
 </div>
 
-    
-
-    <div class="row mb-3" v-if="stats">
-      <div class="col">
-        <div class="alert alert-info py-2 mb-0">
-          <strong>Статистика пользователей:</strong>
-          <span class="ms-2">{{ statsMessage }}</span>
-        </div>
-      </div>
-    </div>
-
     <div v-if="loading" class="text-center p-3">Загрузка...</div>
     <div v-else>
       <div v-for="user in filteredUsers" :key="user.id" class="user-item">
         <div>{{ user.name }}</div>
         <div v-show="user.picture">
-          <img
-            :src="user.picture"
-            data-bs-toggle="modal"
-            data-bs-target="#imageModal"
-            @click="openImageModal(user.picture)"
-            style="max-width:60px; cursor:pointer;"
-            alt=""
-          />
+          <img :src="user.picture" data-bs-toggle="modal" data-bs-target="#imageModal" @click="openImageModal(user.picture)" style="max-width:60px; cursor:pointer;" alt="" />
         </div>
         <div>
           <span v-if="user.role === 'client'">{{ user.phone || '—' }}</span>
@@ -444,20 +378,10 @@ async function onExportXlsx() {
           </span>
         </div>
 
-        <button
-          v-if="canManageUsers"
-          class="btn btn-success"
-          @click="onUserEditClick(user)"
-          data-bs-toggle="modal"
-          data-bs-target="#editUserModal"
-        >
+        <button v-if="canManageUsers" class="btn btn-success" @click="onUserEditClick(user)" data-bs-toggle="modal" data-bs-target="#editUserModal">
           <i class="bi bi-pen-fill"></i>
         </button>
-        <button
-          v-if="canManageUsers"
-          class="btn btn-danger"
-          @click="onRemoveClick(user)"
-        >
+        <button v-if="canManageUsers" class="btn btn-danger" @click="onRemoveClick(user)">
           <i class="bi bi-x"></i>
         </button>
       </div>
